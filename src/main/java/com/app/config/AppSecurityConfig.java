@@ -1,5 +1,5 @@
 package com.app.config;
-
+import com.app.filter.JwtFilter;
 import com.app.service.impl.CustomerUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -7,13 +7,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+
 
 @Configuration
 @EnableWebSecurity
@@ -21,6 +23,9 @@ public class AppSecurityConfig {
 
     @Autowired
     private CustomerUserDetailsService customerUserDetailsService;
+
+    @Autowired
+    private JwtFilter filter;
 
     String[] publicEndpoints = {
             "/api/v1/user/register",
@@ -55,16 +60,18 @@ public class AppSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityConfig(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityConfig(HttpSecurity http) throws Exception{
 
-        http
-                .csrf(csrf -> csrf.disable()) // ✅ CSRF explicitly enabled
-                .authorizeHttpRequests(req -> req
-                        .requestMatchers(publicEndpoints).permitAll()
-                        .requestMatchers("/api/v1/welcome/hello").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
-                .httpBasic(Customizer.withDefaults()); // ✅ Basic auth configured properly
+        http.csrf(cr->cr.disable())
+
+                .authorizeHttpRequests( req -> {
+                    req.requestMatchers(publicEndpoints)
+                            .permitAll()
+                            .requestMatchers("/api/v1/welcome").hasRole("ADMIN")
+                            .anyRequest()
+                            .authenticated();
+                }) .authenticationProvider(authProvider())
+                .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -4,6 +4,7 @@ import com.app.dto.LoginDto;
 import com.app.dto.UserDto;
 import com.app.payload.APIResponse;
 import com.app.service.UserService;
+import com.app.service.impl.JwtService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatusCode;
@@ -35,22 +36,25 @@ public class UserController {
 
 
 
-    @PostMapping("/login")
-    public ResponseEntity<APIResponse<String>> loginCheck(@RequestBody LoginDto loginDto){
+    @Autowired
+    private JwtService jwtService;
 
+    @PostMapping("/login")
+    public ResponseEntity<APIResponse<String>> loginCheck(@RequestBody LoginDto loginDto) {
         APIResponse<String> response = new APIResponse<>();
 
         UsernamePasswordAuthenticationToken token =
                 new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword());
 
         try {
-
             Authentication authenticate = authManager.authenticate(token);
+            if (authenticate.isAuthenticated()) {
+                String jwtToken = jwtService.generateToken(loginDto.getUsername(),
+                        authenticate.getAuthorities().iterator().next().getAuthority());
 
-            if(authenticate.isAuthenticated()) {
-                response.setMessage("Login Sucessful");
+                response.setMessage("Login Successful");
                 response.setStatus(200);
-                response.setData("User has logged");
+                response.setData(jwtToken);  // return JWT
                 return new ResponseEntity<>(response, HttpStatusCode.valueOf(response.getStatus()));
             }
         } catch (Exception e) {
